@@ -1,0 +1,8 @@
+[
+  {
+    "FromPort": 10000,
+    "ToPort": 60000,
+    "IpRange": "0.0.0.0/0",
+    "Protocol": "UDP"
+  }
+]

@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>netcoreapp3.1</TargetFramework>
+        <RootNamespace>gamelift_server_sample_core</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Reference Include="EngineIoClientDotNet, Version=1.0.7.0, Culture=neutral, PublicKeyToken=null">
+        <HintPath>..\..\gamelift-server-sample-dotnet45\Dependencies\EngineIoClientDotNet.dll</HintPath>
+      </Reference>
+      <Reference Include="GameLiftServerSDKNet45, Version=3.4.0.0, Culture=neutral, PublicKeyToken=null">
+        <HintPath>..\..\gamelift-server-sample-dotnet45\Dependencies\GameLiftServerSDKNet45.dll</HintPath>
+      </Reference>
+      <Reference Include="Google.Protobuf, Version=3.1.0.0, Culture=neutral, PublicKeyToken=a7d26565bac4d604">
+        <HintPath>..\..\gamelift-server-sample-dotnet45\Dependencies\Google.Protobuf.dll</HintPath>
+      </Reference>
+      <Reference Include="Newtonsoft.Json, Version=9.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
+        <HintPath>..\..\gamelift-server-sample-dotnet45\Dependencies\Newtonsoft.Json.dll</HintPath>
+      </Reference>
+      <Reference Include="SocketIoClientDotNet, Version=1.0.7.0, Culture=neutral, PublicKeyToken=null">
+        <HintPath>..\..\gamelift-server-sample-dotnet45\Dependencies\SocketIoClientDotNet.dll</HintPath>
+      </Reference>
+      <Reference Include="SuperSocket.ClientEngine, Version=0.10.0.0, Culture=neutral, PublicKeyToken=ee9af13f57f00acc">
+        <HintPath>..\..\gamelift-server-sample-dotnet45\Dependencies\SuperSocket.ClientEngine.dll</HintPath>
+      </Reference>
+      <Reference Include="System.Collections.Immutable, Version=1.2.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+        <HintPath>..\..\gamelift-server-sample-dotnet45\Dependencies\System.Collections.Immutable.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="AWSSDK.Core" Version="3.3.104.20" />
+      <PackageReference Include="AWSSDK.GameLift" Version="3.3.105.12" />
+      <PackageReference Include="CommandLineParser" Version="2.7.82" />
+      <PackageReference Include="LiteNetLib" Version="0.9.1-beta" />
+      <PackageReference Include="log4net" Version="2.0.8" />
+    </ItemGroup>
+
+    <PropertyGroup>
+        <NoWarn>$(NoWarn);NU1605</NoWarn>
+    </PropertyGroup>
+
+</Project>
