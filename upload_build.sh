@@ -10,6 +10,6 @@ aws gamelift upload-build \
   --name gamelift-server-sample-core \
   --build-version $BUILD_VERSION \
   --build-root bin/${TARGET_ENV}/netcoreapp3.1/linux-x64/publish \
-  --operating-system AMAZON_LINUX \
+  --operating-system AMAZON_LINUX_2 \
   --region ap-northeast-1
 
