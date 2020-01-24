@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-TARGET_ENV="Debug"
-BUILD_VERSION=$(date +%Y%m%d_%H%M%S)
+TARGET_ENV="Release"
+BUILD_VERSION=$(git rev-parse HEAD)
 
 cd $(dirname $0)/gamelift-server-sample-core
 dotnet publish -c $TARGET_ENV -r linux-x64
