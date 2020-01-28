@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ContentModelStore">
+    <e p="$USER_HOME$/.nuget/packages/log4net.ext.json/2.0.8.3/contentFiles/any/netstandard2.0/log4net.Ext.Json.LICENSE.txt" t="Include" />
+    <e p="$USER_HOME$/.nuget/packages/log4net.ext.json/2.0.8.3/contentFiles/any/netstandard2.0/log4net.Ext.Json.README.txt" t="Include" />
     <e p="$USER_HOME$/Library/Caches/Rider2019.2/extResources" t="IncludeRecursive" />
     <e p="$USER_HOME$/Library/Caches/Rider2019.2/resharper-host/local/Transient/ReSharperHost/v192/SolutionCaches/_gamelift-server-sample-core.1390846285.00" t="ExcludeRecursive" />
     <e p="$PROJECT_DIR$" t="IncludeFlat">
@@ -8,6 +10,8 @@
         <e p="bin" t="ExcludeRecursive" />
         <e p="Client.cs" t="Include" />
         <e p="gamelift-server-sample-core.csproj" t="IncludeRecursive" />
+        <e p="log4net.config" t="Include" />
+        <e p="Logger.cs" t="Include" />
         <e p="Message.cs" t="Include" />
         <e p="obj" t="ExcludeRecursive">
           <e p="Debug" t="Include">

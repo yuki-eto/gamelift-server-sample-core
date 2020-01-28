@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="RIDER_MODULE" version="4">
   <component name="NewModuleRootManager">
+    <content url="file://$USER_HOME$/.nuget/packages/log4net.ext.json/2.0.8.3/contentFiles/any/netstandard2.0/log4net.Ext.Json.LICENSE.txt" />
+    <content url="file://$USER_HOME$/.nuget/packages/log4net.ext.json/2.0.8.3/contentFiles/any/netstandard2.0/log4net.Ext.Json.README.txt" />
     <content url="file://$MODULE_DIR$/../.." />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

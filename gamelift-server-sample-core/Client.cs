@@ -2,13 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon;
 using Amazon.GameLift;
 using Amazon.GameLift.Model;
+using Aws.GameLift;
 using LiteNetLib;
 using LiteNetLib.Utils;
+using log4net;
 
 namespace gamelift_server_sample_core
 {
@@ -36,6 +40,31 @@ namespace gamelift_server_sample_core
             _glClient = new AmazonGameLiftClient(conf);
         }
 
+        private int RunBySession(GameSession session)
+        {
+            var playerSession = CreatePlayerSession(session);
+            if (playerSession == null)
+            {
+                return 1;
+            }
+
+            var playerSessionId = playerSession.PlayerSessionId;
+            var client = GetListener();
+            if (!client.IsRunning)
+            {
+                return 2;
+            }
+
+            var peer = Connect(session, playerSessionId, client);
+            if (peer.ConnectionState != ConnectionState.Connected)
+            {
+                return 3;
+            }
+
+            MainLoop(client, peer);
+            return 0;
+        }
+
         public int CreateAndRun(string fleetId)
         {
             var sid = "gsess-" + Guid.NewGuid();
@@ -46,15 +75,7 @@ namespace gamelift_server_sample_core
             }
 
             WaitForActivate(ref session);
-
-            var playerSession = CreatePlayerSession(session);
-            if (playerSession == null)
-            {
-                return 1;
-            }
-
-            MainLoop(session, playerSession);
-            return 0;
+            return RunBySession(session);
         }
 
         public int DescribeAndRun(string sid)
@@ -70,14 +91,7 @@ namespace gamelift_server_sample_core
             }
 
             var session = res.GameSessions.First();
-            var playerSession = CreatePlayerSession(session);
-            if (playerSession == null)
-            {
-                return 1;
-            }
-
-            MainLoop(session, playerSession);
-            return 0;
+            return RunBySession(session);
         }
 
         public GameSession SearchSession(string fleetId)
@@ -138,15 +152,18 @@ namespace gamelift_server_sample_core
         {
             var pid = Guid.NewGuid().ToString();
             var psReq = new CreatePlayerSessionRequest {GameSessionId = session.GameSessionId, PlayerId = pid};
+            var task = _glClient.CreatePlayerSessionAsync(psReq);
             try
             {
-                var cpRes = _glClient.CreatePlayerSessionAsync(psReq).Result;
+                var cpRes = task.Result;
                 var pSess = cpRes.PlayerSession;
                 Console.WriteLine("create player session: {0}", pSess.PlayerSessionId);
                 return pSess;
             }
-            catch (GameSessionFullException)
+            catch (AggregateException e)
             {
+                var exception = e.InnerExceptions.First();
+                if (exception.GetType() != typeof(GameSessionFullException)) throw;
                 Console.WriteLine("session[{0}] is full: {1}", session.GameSessionId, pid);
                 return null;
             }
@@ -157,17 +174,9 @@ namespace gamelift_server_sample_core
             }
         }
 
-        private void MainLoop(GameSession session, PlayerSession playerSession)
+        private NetManager GetListener()
         {
-            var port = session.Port;
-            var host = session.IpAddress;
-            Console.WriteLine("host: {0}, port: {1}", host, port);
-
             var listener = new EventBasedNetListener();
-            var client = new NetManager(listener);
-            client.Start();
-            var server = client.Connect(host, port, playerSession.PlayerSessionId);
-
             listener.NetworkErrorEvent += (point, error) =>
             {
                 Console.WriteLine("err: {0}", error.ToString());
@@ -188,6 +197,20 @@ namespace gamelift_server_sample_core
                 reader.Recycle();
             };
 
+            var client = new NetManager(listener);
+            client.Start();
+            return client;
+        }
+
+        private static NetPeer Connect(GameSession session, string playerSessionId, NetManager client)
+        {
+            var target = IPEndPoint.Parse($"{session.IpAddress}:{session.Port}");
+            Console.WriteLine("target: {0}", target);
+            return client.Connect(target, playerSessionId);
+        }
+
+        private void MainLoop(NetManager client, NetPeer peer)
+        {
             var writer = new NetDataWriter();
             Task.Run(() =>
             {
@@ -202,7 +225,7 @@ namespace gamelift_server_sample_core
 
                     writer.Reset();
                     writer.Put(s);
-                    server.Send(writer, DeliveryMethod.Unreliable);
+                    peer.Send(writer, DeliveryMethod.Unreliable);
                 }
             });
 

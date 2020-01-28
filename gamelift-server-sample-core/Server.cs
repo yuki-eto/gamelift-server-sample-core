@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Threading;
+using Aws.GameLift;
 using Aws.GameLift.Server;
 using LiteNetLib;
 using LiteNetLib.Utils;
@@ -70,7 +71,7 @@ namespace gamelift_server_sample_core
 
     public class Server
     {
-        private static readonly ILog Logger = LogManager.GetLogger(typeof(Program));
+        private readonly ILog _logger = Logger.GetLogger(typeof(Server));
 
         private bool _isRunning;
         private Aws.GameLift.Server.Model.GameSession _session;
@@ -85,26 +86,111 @@ namespace gamelift_server_sample_core
             _playerEndPoints = new PlayerEndPoints();
         }
 
-        public static bool InitSdk()
+        private static Message CreateAdminMessage(string msg)
         {
-            LogInfo("call InitSDK");
-            var init = GameLiftServerAPI.InitSDK();
-            if (init.Success || init.Error == null) return true;
-            LogError("init error: {0}", init.Error);
-            return false;
+            return new Message {Name = "admin", Body = msg};
         }
 
-        public int Run()
+        private void OnConnectionRequestEvent(ConnectionRequest request)
+        {
+            // PlayerSessionId を接続時に受け取って GameLift に問い合わせる
+            var pid = request.Data.GetString();
+            _logger.InfoFormat("playerSessionId: {0}", pid);
+            var res = GameLiftServerAPI.AcceptPlayerSession(pid);
+            if (!res.Success)
+            {
+                request.Reject();
+                return;
+            }
+
+            if (!_playerEndPoints.Add(request.RemoteEndPoint, pid))
+            {
+                request.Reject();
+                return;
+            }
+
+            request.Accept();
+        }
+
+        private void OnConnectedEvent(NetPeer peer)
+        {
+            if (!_peerList.Add(peer))
+            {
+                peer.Disconnect();
+            }
+
+            _logger.InfoFormat("connected: {0}", peer.EndPoint);
+            if (_peerList.IsEmpty()) return;
+
+            var json = CreateAdminMessage($"[{peer.EndPoint}]さんが入りました").Serialize();
+            var w = new NetDataWriter();
+            _peerList.ForEach(p =>
+            {
+                w.Reset();
+                w.Put(json);
+                p.Send(w, DeliveryMethod.ReliableOrdered);
+            });
+        }
+
+        private void OnDisconnectedEvent(NetPeer peer, DisconnectInfo info)
+        {
+            var pid = _playerEndPoints.Get(peer.EndPoint);
+            if (!string.IsNullOrEmpty(pid))
+            {
+                GameLiftServerAPI.RemovePlayerSession(pid);
+                _logger.InfoFormat("remove player session: {0}", pid);
+                _playerEndPoints.Delete(peer.EndPoint);
+            }
+
+            _peerList.Delete(peer.EndPoint);
+            Console.WriteLine("disconnected: {0}, {1}", peer.EndPoint, info.Reason);
+            if (!_peerList.IsEmpty())
+            {
+                var json = CreateAdminMessage($"[{peer.EndPoint}]さんが抜けました").Serialize();
+                var w = new NetDataWriter();
+                _peerList.ForEach(p =>
+                {
+                    w.Reset();
+                    w.Put(json);
+                    p.Send(w, DeliveryMethod.ReliableOrdered);
+                });
+            }
+
+            // 全員セッションから抜けたら終了する
+            GameLiftServerAPI.TerminateGameSession();
+            _logger.InfoFormat("terminate game session: {0}", _session.GameSessionId);
+        }
+
+        private void OnNetworkReceiveEvent(NetPeer peer, NetPacketReader reader, DeliveryMethod _)
+        {
+            // クライアントから受け取ったデータをセッションのメンバーにブロードキャストする
+            var body = reader.GetString();
+            var msg = new Message {Body = body, Name = peer.EndPoint.ToString()};
+            var json = msg.Serialize();
+            var w = new NetDataWriter();
+            _peerList.ForEach(p =>
+            {
+                w.Reset();
+                w.Put(json);
+                p.Send(w, DeliveryMethod.ReliableOrdered);
+            });
+        }
+
+        private NetManager ListenServer()
         {
             var listener = new EventBasedNetListener();
+            listener.ConnectionRequestEvent += OnConnectionRequestEvent;
+            listener.PeerConnectedEvent += OnConnectedEvent;
+            listener.PeerDisconnectedEvent += OnDisconnectedEvent;
+            listener.NetworkReceiveEvent += OnNetworkReceiveEvent;
+
             var server = new NetManager(listener);
 
             for (var i = 0; i < 10; i++)
             {
                 if (!server.Start())
                 {
-                    LogError("cannot launch server");
-                    return 1;
+                    continue;
                 }
 
                 // 10000 - 60000 の範囲外の場合は再度ポートを割り当ててみる
@@ -114,124 +200,63 @@ namespace gamelift_server_sample_core
                     break;
                 }
 
-                LogInfo("out of port range: {0}, restart server", port);
+                _logger.InfoFormat("out of port range: {0}, restart server", port);
                 server.Stop();
             }
 
-            if (!server.IsRunning)
-            {
-                LogError("cannot launch server");
-                return 2;
-            }
+            return server;
+        }
 
-            var listenPort = server.LocalPort;
-            LogInfo("listen on: {0}", listenPort);
+        private void ProcessEnding()
+        {
+            _playerEndPoints.ForEach(pid => GameLiftServerAPI.RemovePlayerSession(pid));
+            _peerList.ForEach(p => p.Disconnect());
+            GameLiftServerAPI.ProcessEnding();
+        }
 
-            listener.ConnectionRequestEvent += request =>
-            {
-                // PlayerSessionId を接続時に受け取って GameLift に問い合わせる
-                var pid = request.Data.GetString();
-                LogInfo("playerSessionId: {0}", pid);
-                var res = GameLiftServerAPI.AcceptPlayerSession(pid);
-                if (!res.Success)
-                {
-                    request.Reject();
-                    return;
-                }
-
-                if (!_playerEndPoints.Add(request.RemoteEndPoint, pid))
-                {
-                    request.Reject();
-                    return;
-                }
-
-                request.Accept();
-            };
-            listener.PeerConnectedEvent += peer =>
-            {
-                if (!_peerList.Add(peer))
-                {
-                    peer.Disconnect();
-                }
-
-                LogInfo("connected: {0}", peer.EndPoint);
-                if (_peerList.IsEmpty()) return;
-
-                var json = CreateAdminMessage($"[{peer.EndPoint}]さんが入りました").Serialize();
-                var w = new NetDataWriter();
-                _peerList.ForEach(p =>
-                {
-                    w.Reset();
-                    w.Put(json);
-                    p.Send(w, DeliveryMethod.ReliableOrdered);
-                });
-            };
-            listener.PeerDisconnectedEvent += (peer, info) =>
-            {
-                var pid = _playerEndPoints.Get(peer.EndPoint);
-                if (!string.IsNullOrEmpty(pid))
-                {
-                    GameLiftServerAPI.RemovePlayerSession(pid);
-                    LogInfo("remove player session: {0}", pid);
-                    _playerEndPoints.Delete(peer.EndPoint);
-                }
-
-                _peerList.Delete(peer.EndPoint);
-                Console.WriteLine("disconnected: {0}, {1}", peer.EndPoint, info.Reason);
-                if (!_peerList.IsEmpty())
-                {
-                    var json = CreateAdminMessage($"[{peer.EndPoint}]さんが抜けました").Serialize();
-                    var w = new NetDataWriter();
-                    _peerList.ForEach(p =>
-                    {
-                        w.Reset();
-                        w.Put(json);
-                        p.Send(w, DeliveryMethod.ReliableOrdered);
-                    });
-                }
-
-                // 全員セッションから抜けたら終了する
-                GameLiftServerAPI.TerminateGameSession();
-                LogInfo("terminate game session: {0}", _session.GameSessionId);
-            };
-            listener.NetworkReceiveEvent += (peer, reader, method) =>
-            {
-                // クライアントから受け取ったデータをセッションのメンバーにブロードキャストする
-                var body = reader.GetString();
-                var msg = new Message {Body = body, Name = peer.EndPoint.ToString()};
-                var json = msg.Serialize();
-                var w = new NetDataWriter();
-                _peerList.ForEach(p =>
-                {
-                    w.Reset();
-                    w.Put(json);
-                    p.Send(w, DeliveryMethod.ReliableOrdered);
-                });
-            };
-
+        private bool ProcessReady(int listenPort, out GameLiftError err)
+        {
             var processParameters = new ProcessParameters
             {
                 Port = listenPort,
                 OnStartGameSession = session =>
                 {
-                    LogInfo("start session: {0}", session.GameSessionId);
+                    _logger.InfoFormat("start session: {0}", session.GameSessionId);
                     GameLiftServerAPI.ActivateGameSession();
                     _session = session;
                 },
-                OnProcessTerminate = () =>
-                {
-                    _playerEndPoints.ForEach(pid => GameLiftServerAPI.RemovePlayerSession(pid));
-                    _peerList.ForEach(p => p.Disconnect());
-                    GameLiftServerAPI.ProcessEnding();
-                    _isRunning = false;
-                }
+                OnProcessTerminate = () => { _isRunning = false; }
             };
 
             var outcome = GameLiftServerAPI.ProcessReady(processParameters);
-            LogInfo("process ready: {0}", outcome.Success);
-            if (!outcome.Success && outcome.Error != null)
+            err = outcome.Error;
+            return outcome.Success;
+        }
+
+        public int Run()
+        {
+            _logger.Info("call InitSDK");
+            var init = GameLiftServerAPI.InitSDK();
+            if (!init.Success)
             {
-                LogError("process ready error: {0}", outcome.Error.ToString());
+                _logger.ErrorFormat("init error: {0}", init.Error);
+                return 1;
+            }
+
+            var server = ListenServer();
+            if (!server.IsRunning)
+            {
+                _logger.ErrorFormat("cannot launch server");
+                return 2;
+            }
+
+            var listenPort = server.LocalPort;
+            _logger.InfoFormat("listen on: {0}", listenPort);
+            GlobalContext.Properties["ListenPort"] = listenPort;
+
+            if (!ProcessReady(listenPort, out var err))
+            {
+                _logger.ErrorFormat("cannot ready to process: {0}", err);
                 return 3;
             }
 
@@ -241,37 +266,10 @@ namespace gamelift_server_sample_core
                 Thread.Sleep(15);
             }
 
+            _logger.InfoFormat("process ending: {0}", listenPort);
+            ProcessEnding();
             server.Stop();
             return 0;
-        }
-
-        private static Message CreateAdminMessage(string msg)
-        {
-            return new Message {Name = "admin", Body = msg};
-        }
-
-        private static void LogError(string format, object arg0)
-        {
-            Console.WriteLine(format, arg0);
-            Logger.ErrorFormat(format, arg0);
-        }
-
-        private static void LogError(string msg)
-        {
-            Console.WriteLine(msg);
-            Logger.Error(msg);
-        }
-
-        private static void LogInfo(string format, object arg0)
-        {
-            Console.WriteLine(format, arg0);
-            Logger.InfoFormat(format, arg0);
-        }
-
-        private static void LogInfo(string msg)
-        {
-            Console.WriteLine(msg);
-            Logger.Info(msg);
         }
     }
 }

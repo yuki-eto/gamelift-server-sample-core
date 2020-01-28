@@ -1,5 +1,6 @@
 ﻿using System;
 using CommandLine;
+using log4net.Repository.Hierarchy;
 
 namespace gamelift_server_sample_core
 {
@@ -32,17 +33,17 @@ namespace gamelift_server_sample_core
 
             return Parser.Default.ParseArguments<ServerOptions, ClientOptions>(args)
                 .MapResult(
-                    (ServerOptions opts) => RunServer(opts),
+                    (ServerOptions opts) => RunServer(),
                     (ClientOptions opts) => RunClient(opts),
                     errs => 1
                 );
         }
 
-        private static int RunServer(ServerOptions opts)
+        private static int RunServer()
         {
             Console.WriteLine("running on server mode");
             var server = new Server();
-            return Server.InitSdk() ? server.Run() : 9;
+            return server.Run();
         }
 
         private static int RunClient(ClientOptions opts)
