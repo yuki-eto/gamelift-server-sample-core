@@ -56,11 +56,6 @@ namespace gamelift_server_sample_core
             }
 
             var peer = Connect(session, playerSessionId, client);
-            if (peer.ConnectionState != ConnectionState.Connected)
-            {
-                return 3;
-            }
-
             MainLoop(client, peer);
             return 0;
         }
@@ -191,7 +186,7 @@ namespace gamelift_server_sample_core
             {
                 var json = reader.GetString();
                 var msg = Message.FromString(json);
-                Console.WriteLine("");
+                Console.WriteLine();
                 Console.WriteLine($"({msg.Name})>> {msg.Body}");
                 Console.Write(">> ");
                 reader.Recycle();
@@ -216,15 +211,20 @@ namespace gamelift_server_sample_core
             {
                 while (_isRunning)
                 {
-                    Console.Write(">> ");
-                    var s = Console.ReadLine();
-                    if (string.IsNullOrWhiteSpace(s))
+                    var input = ReadLine.Read(">> ");
+                    if (string.IsNullOrWhiteSpace(input))
                     {
                         continue;
                     }
 
+                    if (input.Trim(new[] {' '}) == "/ping")
+                    {
+                        Console.WriteLine($"<ping: {peer.Ping}ms>");
+                        continue;
+                    }
+
                     writer.Reset();
-                    writer.Put(s);
+                    writer.Put(input);
                     peer.Send(writer, DeliveryMethod.Unreliable);
                 }
             });

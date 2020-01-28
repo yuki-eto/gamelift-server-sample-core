@@ -12,8 +12,8 @@ namespace gamelift_server_sample_core
 {
     internal class Peers
     {
-        private readonly ConcurrentDictionary<IPEndPoint, NetPeer> _dict
-            = new ConcurrentDictionary<IPEndPoint, NetPeer>();
+        private readonly ConcurrentDictionary<IPEndPoint, NetPeer> _dict =
+            new ConcurrentDictionary<IPEndPoint, NetPeer>();
 
         public bool Add(NetPeer peer)
         {
@@ -41,8 +41,8 @@ namespace gamelift_server_sample_core
 
     internal class PlayerEndPoints
     {
-        private readonly ConcurrentDictionary<IPEndPoint, string> _dict
-            = new ConcurrentDictionary<IPEndPoint, string>();
+        private readonly ConcurrentDictionary<IPEndPoint, string>
+            _dict = new ConcurrentDictionary<IPEndPoint, string>();
 
         public bool Add(IPEndPoint endPoint, string playerSessionId)
         {
@@ -154,6 +154,7 @@ namespace gamelift_server_sample_core
                     w.Put(json);
                     p.Send(w, DeliveryMethod.ReliableOrdered);
                 });
+                return;
             }
 
             // 全員セッションから抜けたら終了する
