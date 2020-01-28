@@ -237,12 +237,26 @@ namespace gamelift_server_sample_core
         public int Run()
         {
             _logger.Info("call InitSDK");
-            var init = GameLiftServerAPI.InitSDK();
+            var init = new GenericOutcome {Success = false};
+            for (var i = 0; i < 10; i++)
+            {
+                init = GameLiftServerAPI.InitSDK();
+                if (init.Success)
+                {
+                    break;
+                }
+
+                _logger.ErrorFormat("init error: {0}", init.Error);
+                Thread.Sleep(1000 * i + 1);
+            }
+
             if (!init.Success)
             {
-                _logger.ErrorFormat("init error: {0}", init.Error);
+                _logger.ErrorFormat("cannot initialize GameLift Server SDK");
                 return 1;
             }
+
+            _logger.Info("initialize GameLift Server SDK");
 
             var server = ListenServer();
             if (!server.IsRunning)
