@@ -22,6 +22,7 @@
         </e>
         <e p="Program.cs" t="Include" />
         <e p="Server.cs" t="Include" />
+        <e p="test_run.sh" t="Include" />
       </e>
       <e p="gamelift-server-sample-core.sln" t="IncludeFlat" />
       <e p="packages" t="ExcludeRecursive" />

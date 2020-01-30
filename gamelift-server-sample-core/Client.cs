@@ -211,21 +211,22 @@ namespace gamelift_server_sample_core
             {
                 while (_isRunning)
                 {
-                    var input = ReadLine.Read(">> ");
-                    if (string.IsNullOrWhiteSpace(input))
-                    {
-                        continue;
-                    }
-
-                    if (input.Trim(new[] {' '}) == "/ping")
-                    {
-                        Console.WriteLine($"<ping: {peer.Ping}ms>");
-                        continue;
-                    }
+//                    var input = ReadLine.Read(">> ");
+//                    if (string.IsNullOrWhiteSpace(input))
+//                    {
+//                        continue;
+//                    }
+//
+//                    if (input.Trim(new[] {' '}) == "/ping")
+//                    {
+//                        Console.WriteLine($"<ping: {peer.Ping}ms>");
+//                        continue;
+//                    }
 
                     writer.Reset();
-                    writer.Put(input);
+                    writer.Put(DateTime.Now.ToString(CultureInfo.CurrentCulture));
                     peer.Send(writer, DeliveryMethod.Unreliable);
+                    Thread.Sleep(33);
                 }
             });
 

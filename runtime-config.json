@@ -3,7 +3,7 @@
         {
             "LaunchPath": "/local/game/gamelift-server-sample-core",
             "Parameters": "server",
-            "ConcurrentExecutions": 4
+            "ConcurrentExecutions": 50
         }
     ]
 }
