@@ -35,7 +35,7 @@
       <PackageReference Include="AWSSDK.GameLift" Version="3.3.105.12" />
       <PackageReference Include="CommandLineParser" Version="2.7.82" />
       <PackageReference Include="LiteNetLib" Version="0.9.1-beta" />
-      <PackageReference Include="log4net" Version="2.0.8" />
+      <PackageReference Include="log4net" Version="2.0.10" />
       <PackageReference Include="log4net.Ext.Json" Version="2.0.8.3" />
       <PackageReference Include="Microsoft.NETCore.Targets" Version="3.0.0" PrivateAssets="all" />
       <PackageReference Include="ReadLine" Version="2.0.1" />
